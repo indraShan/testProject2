@@ -7,7 +7,7 @@ defmodule Starter do
   that the application does not get killed abruptly.
   """
   def start(_type, _args) do
-    {:ok, app} = Gossip.AppSupervisor.start_link(self(), System.argv())
+    {:ok, app} = Gossip.Application.start_link(self(), System.argv())
     waitForResult()
     {:ok, app}
   end
