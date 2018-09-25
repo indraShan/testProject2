@@ -8,19 +8,24 @@ defmodule Gossip.Topology do
     {:ok}
   end
 
-  def debug_node(pid) do
+  def all_nodes(pid) do
     Agent.get(pid, fn list -> list end)
   end
 
   def neighbour_for_node(pid, node) do
-    nodes = Agent.get(pid, fn list -> list end)
-    random = Enum.random(0..length(nodes)-1)
-    neighbour = Enum.at(nodes, random)
-    neighbour = if neighbour == node do
-      neighbour_for_node(pid, node)
-    else
-      neighbour
-    end
+    neighbour =
+      Agent.get(pid, fn list ->
+        random = Enum.random(0..(length(list) - 1))
+        Enum.at(list, random)
+      end)
+
+    neighbour =
+      if neighbour == node do
+        neighbour_for_node(pid, node)
+      else
+        neighbour
+      end
+
     neighbour
   end
 end

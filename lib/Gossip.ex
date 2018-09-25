@@ -11,13 +11,20 @@ defmodule Gossip.Node do
   def init(opts) do
     {:ok, messenger} = Messenger.start_link(opts[:label])
     {:ok, mailbox} = start_mailbox(opts[:label])
-    state = %{label: opts[:label], mailbox: mailbox, messenger: messenger, topology: opts[:topology]}
+
+    state = %{
+      label: opts[:label],
+      mailbox: mailbox,
+      messenger: messenger,
+      topology: opts[:topology]
+    }
+
     Gossip.Topology.register_node(opts[:topology], mailbox)
     {:ok, state}
   end
 
   def start_mailbox(label) do
-    Gossip.Mailbox.start([label: label, node: self()])
+    Gossip.Mailbox.start(label: label, node: self())
   end
 
   def transmit_rumour(pid, rumour) do
