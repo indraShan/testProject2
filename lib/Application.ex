@@ -8,32 +8,37 @@ defmodule Gossip.Application do
   end
 
   def init(opts) do
-    # create topology
-    {:ok, topology} = Gossip.Topology.start_link(self())
     # create nodes
-    nodes = create_nodes(opts[:args], topology)
+    nodes = create_nodes(opts[:args])
+    topology = Gossip.Topology.create_structure(nodes)
     node = Enum.at(nodes, 0)
     # Start tranmitting from a node
-    Gossip.Node.transmit_rumour(node)
+    Gossip.Node.transmit_rumour(node, topology)
 
     state = %{
       topology: topology,
-      caller: opts[:caller]
+      caller: opts[:caller],
+      nodes_count: opts[:args]
     }
 
     {:ok, state}
   end
 
-  def handle_info({:network_converged}, state) do
-    send(state.caller, {:terminate})
-    {:noreply, state}
+  def handle_info({:node_terminated}, state) do
+    nodes_count = state.nodes_count - 1
+
+    if nodes_count == 1 do
+      send(state.caller, {:terminate})
+    end
+
+    {:noreply, Map.put(state, :nodes_count, nodes_count)}
   end
 
-  defp create_nodes(n, topology) do
+  defp create_nodes(n) do
     # Create nodes.
     nodes =
       Enum.reduce(1..n, [], fn x, list ->
-        {:ok, pid} = Gossip.Node.start_link(x, topology)
+        {:ok, pid} = Gossip.Node.start_link(x, self())
         [pid | list]
       end)
 

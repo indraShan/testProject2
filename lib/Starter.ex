@@ -14,7 +14,9 @@ defmodule Starter do
 
   def waitForResult() do
     receive do
-      {:terminate} -> IO.puts("Done")
+      {:terminate} ->
+        nil
+        # IO.puts("Done")
     end
   end
 end

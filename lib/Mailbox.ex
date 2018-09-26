@@ -16,7 +16,7 @@ defmodule Gossip.Mailbox do
   defp wait(node, label) do
     receive do
       {:rumour_broadcast, rumour} ->
-        Gossip.Node.recv_rumour(node, rumour)
+        # Gossip.Node.recv_rumour(node, rumour)
         wait(node, label)
     end
   end

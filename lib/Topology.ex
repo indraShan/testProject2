@@ -1,52 +1,20 @@
 defmodule Gossip.Topology do
-  def start_link(caller) do
-    Agent.start_link(fn -> %{caller: caller, nodes: []} end)
+  def create_structure(nodes) do
+    # For now just the full network.
+    # But from here we can return whatever we want.
+    %{nodes: nodes}
   end
 
-  def register_node(pid, node) do
-    Agent.update(
-      pid,
-      fn map ->
-        list = Map.get(map, :nodes)
-        Map.put(map, :nodes, [node | list])
-      end
-    )
-
-    {:ok}
-  end
-
-  def remove_node(pid, node) do
-    Agent.update(
-      pid,
-      fn map ->
-        list = Map.get(map, :nodes)
-        updated_list = List.delete(list, node)
-
-        if length(updated_list) == 1 do
-          IO.puts("Just one node remaining")
-          send(Map.get(map, :caller), {:network_converged})
-        end
-
-        Map.put(map, :nodes, updated_list)
-      end
-    )
-  end
-
-  def all_nodes(pid) do
-    Agent.get(pid, fn map -> Map.get(map, :nodes) end)
-  end
-
-  def neighbour_for_node(pid, node) do
-    neighbour =
-      Agent.get(pid, fn map ->
-        list = Map.get(map, :nodes)
-        random = Enum.random(0..(length(list) - 1))
-        Enum.at(list, random)
-      end)
+  # This method gets called with the exact parameter that was returned from the
+  # create_structure method
+  def neighbour_for_node(topology, node) do
+    list = Map.get(topology, :nodes)
+    random = Enum.random(0..(length(list) - 1))
+    neighbour = Enum.at(list, random)
 
     neighbour =
       if neighbour == node do
-        neighbour_for_node(pid, node)
+        neighbour_for_node(topology, node)
       else
         neighbour
       end

@@ -6,8 +6,8 @@
 defmodule Gossip.Node do
   @timer_interval 10
 
-  def start_link(label, topology) do
-    GenServer.start(__MODULE__, [label: label, topology: topology], [])
+  def start_link(label, application) do
+    GenServer.start(__MODULE__, [label: label, application: application], [])
   end
 
   def init(opts) do
@@ -17,27 +17,26 @@ defmodule Gossip.Node do
       label: opts[:label],
       messenger: messenger,
       terminated: false,
-      topology: opts[:topology]
+      application: opts[:application]
     }
 
-    Gossip.Topology.register_node(opts[:topology], self())
     {:ok, state}
   end
 
-  def transmit_rumour(pid) do
-    GenServer.cast(pid, {:transmit_rumour})
+  def transmit_rumour(pid, topology) do
+    GenServer.cast(pid, {:transmit_rumour, topology})
   end
 
-  def recv_rumour(pid, rumour) do
-    GenServer.cast(pid, {:recv_rumour, rumour})
+  def recv_rumour(pid, rumour, topology) do
+    GenServer.cast(pid, {:recv_rumour, rumour, topology})
   end
 
   def handle_info(:re_transmit_rumour, state) do
-    Gossip.Node.transmit_rumour(self())
+    Gossip.Node.transmit_rumour(self(), state.topology)
     {:noreply, state}
   end
 
-  def handle_cast({:transmit_rumour}, state) do
+  def handle_cast({:transmit_rumour, topology}, state) do
     if state.terminated == true do
       if Map.has_key?(state, :timer) do
         :timer.cancel(state.timer)
@@ -45,18 +44,20 @@ defmodule Gossip.Node do
 
       {:noreply, state}
     else
-      state.messenger |> Messenger.hot_rumour() |> do_broadcast(state)
+      # Update the state to include the topology received
+      new_state = Map.put(state, :topology, topology)
+      new_state.messenger |> Messenger.hot_rumour() |> do_broadcast(new_state)
 
-      if Map.has_key?(state, :timer) do
-        :timer.cancel(state.timer)
+      if Map.has_key?(new_state, :timer) do
+        :timer.cancel(new_state.timer)
       end
 
       timer = Process.send_after(self(), :re_transmit_rumour, @timer_interval)
-      {:noreply, Map.put(state, :timer, timer)}
+      {:noreply, Map.put(new_state, :timer, timer)}
     end
   end
 
-  def handle_cast({:recv_rumour, rumour}, state) do
+  def handle_cast({:recv_rumour, rumour, topology}, state) do
     if state.terminated == true do
       if Map.has_key?(state, :timer) do
         :timer.cancel(state.timer)
@@ -64,28 +65,27 @@ defmodule Gossip.Node do
 
       {:noreply, state}
     else
-      {terminate, count} = state.messenger |> Messenger.handle_rumour(rumour)
+      new_state = Map.put(state, :topology, topology)
+      {terminate, count} = new_state.messenger |> Messenger.handle_rumour(rumour)
 
-      # IO.puts(
-      #   "Node #{state.label} received a brodcast from #{rumour.label}. Message count = #{count}"
-      # )
+      IO.puts(
+        "Node #{state.label} received a brodcast from #{rumour.label}. Message count = #{count}"
+      )
 
-      new_state =
+      updated_state =
         if terminate == true do
-          # IO.puts("Removing #{state.label} from topology")
-          if Map.has_key?(state, :timer) do
-            :timer.cancel(state.timer)
+          if Map.has_key?(new_state, :timer) do
+            :timer.cancel(new_state.timer)
           end
 
-          Gossip.Topology.remove_node(state.topology, self())
-          IO.inspect(length(Gossip.Topology.all_nodes(state.topology)))
-          Map.put(state, :terminated, true)
+          send(state.application, {:node_terminated})
+          Map.put(new_state, :terminated, true)
         else
-          Gossip.Node.transmit_rumour(self())
-          state
+          Gossip.Node.transmit_rumour(self(), new_state.topology)
+          new_state
         end
 
-      {:noreply, new_state}
+      {:noreply, updated_state}
     end
   end
 
@@ -93,6 +93,6 @@ defmodule Gossip.Node do
     # Get neighbour from topology. send rumour
     neighbour = Gossip.Topology.neighbour_for_node(state.topology, self())
     # IO.puts("Broadcasting rumour from node #{state.label}")
-    Gossip.Node.recv_rumour(neighbour, rumour)
+    Gossip.Node.recv_rumour(neighbour, rumour, state.topology)
   end
 end

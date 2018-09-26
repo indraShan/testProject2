@@ -1,5 +1,5 @@
 defmodule Messenger do
-  @rumour_termination_count 100
+  @rumour_termination_count 10
   def start_link(label) do
     Agent.start_link(fn ->
       %{label: label, s: label, count: 0, weight: 1}
