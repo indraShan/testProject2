@@ -1,6 +1,6 @@
-defmodule Messenger do
+defmodule Gossip.RumourHandler do
   @rumour_termination_count 10
-  def start_link(label) do
+  def start_link(label, algo) do
     Agent.start_link(fn ->
       %{label: label, s: label, count: 0, weight: 1}
     end)
