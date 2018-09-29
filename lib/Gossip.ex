@@ -66,11 +66,9 @@ defmodule Gossip.Node do
       {:noreply, state}
     else
       new_state = Map.put(state, :topology, topology)
-      {terminate, count} = new_state.rumourHandler |> Gossip.RumourHandler.handle_rumour(rumour)
+      {terminate, map} = new_state.rumourHandler |> Gossip.RumourHandler.handle_rumour(rumour)
 
-      IO.puts(
-        "Node #{state.label} received a brodcast from #{rumour.label}. Message count = #{count}"
-      )
+      IO.puts("Node #{state.label} received a brodcast from #{rumour.label}.")
 
       updated_state =
         if terminate == true do
@@ -79,6 +77,13 @@ defmodule Gossip.Node do
           end
 
           send(state.application, {:node_terminated})
+
+          # IO.puts(
+          #   "Node #{state.label} Count = #{map.count}, Ratio = #{map.ratio}, Rounds = #{
+          #     map.rounds
+          #   }"
+          # )
+
           Map.put(new_state, :terminated, true)
         else
           Gossip.Node.transmit_rumour(self(), new_state.topology)
