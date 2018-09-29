@@ -4,9 +4,18 @@ defmodule Gossip.RumourHandler do
   @push_sum_min_difference :math.pow(10, -10)
   @push_sum_algo "push-sum"
 
-  def start_link(label, algo) do
+  def start_link(label, algo, node) do
     Agent.start_link(fn ->
-      %{label: label, algo: algo, s: label, count: 0, weight: 1, ratio: label, rounds: 0}
+      %{
+        label: label,
+        algo: algo,
+        s: label,
+        count: 0,
+        weight: 1,
+        ratio: label,
+        rounds: 0,
+        sender: node
+      }
     end)
   end
 

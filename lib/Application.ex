@@ -24,27 +24,36 @@ defmodule Gossip.Application do
 
     nodes = create_nodes(number_of_nodes, algo)
     topology = Gossip.Topology.create_structure(nodes)
-    node = Enum.at(nodes, 0)
-    # Start tranmitting from a node
-    Gossip.Node.transmit_rumour(node, topology)
 
     state = %{
       topology: topology,
       caller: opts[:caller],
-      nodes_count: number_of_nodes
+      nodes: nodes
     }
+
+    send(self(), {:restart_gossip})
 
     {:ok, state}
   end
 
-  def handle_info({:node_terminated}, state) do
-    nodes_count = state.nodes_count - 1
+  def handle_info({:node_terminated, node}, state) do
+    nodes = List.delete(state.nodes, node)
 
-    if nodes_count == 1 do
+    if length(nodes) == 1 do
       send(state.caller, {:terminate})
     end
 
-    {:noreply, Map.put(state, :nodes_count, nodes_count)}
+    send(self(), {:restart_gossip})
+    {:noreply, Map.put(state, :nodes, nodes)}
+  end
+
+  def handle_info({:restart_gossip}, state) do
+    # Get a random node
+    node = Enum.at(state.nodes, Enum.random(0..(length(state.nodes) - 1)))
+    # Start tranmitting from the chosen node
+    Gossip.Node.transmit_rumour(node, state.topology)
+
+    {:noreply, state}
   end
 
   defp create_nodes(n, algo) do

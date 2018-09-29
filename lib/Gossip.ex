@@ -4,14 +4,14 @@
 # thread/actor i.e. read may get blocked on write and vice versa.
 # revisit if required.
 defmodule Gossip.Node do
-  @timer_interval 10
+  # @timer_interval 10
 
   def start_link(label, application, algo) do
     GenServer.start(__MODULE__, [label: label, application: application, algo: algo], [])
   end
 
   def init(opts) do
-    {:ok, handler} = Gossip.RumourHandler.start_link(opts[:label], opts[:algo])
+    {:ok, handler} = Gossip.RumourHandler.start_link(opts[:label], opts[:algo], self())
 
     state = %{
       label: opts[:label],
@@ -36,11 +36,21 @@ defmodule Gossip.Node do
     {:noreply, state}
   end
 
+  def handle_info({:remove_from_topology, sender}, state) do
+    updated_state = Map.put(state, :topology, Gossip.Topology.remove_node(state.topology, sender))
+
+    # IO.puts "Number of nodes = #{Gossip.Topology.debug_node_count(state.topology)}, after removal = #{Gossip.Topology.debug_node_count(updated_state.topology)}"
+    {:noreply, updated_state}
+  end
+
   def handle_cast({:transmit_rumour, topology}, state) do
     if state.terminated == true do
-      if Map.has_key?(state, :timer) do
-        :timer.cancel(state.timer)
-      end
+      # if Map.has_key?(state, :timer) do
+      #   :timer.cancel(state.timer)
+      # end
+
+      # Ask the app to start again.
+      send(state.application, {:restart_gossip})
 
       {:noreply, state}
     else
@@ -48,41 +58,49 @@ defmodule Gossip.Node do
       new_state = Map.put(state, :topology, topology)
       new_state.rumourHandler |> Gossip.RumourHandler.hot_rumour() |> do_broadcast(new_state)
 
-      if Map.has_key?(new_state, :timer) do
-        :timer.cancel(new_state.timer)
-      end
+      # if Map.has_key?(new_state, :timer) do
+      #   :timer.cancel(new_state.timer)
+      # end
 
-      timer = Process.send_after(self(), :re_transmit_rumour, @timer_interval)
-      {:noreply, Map.put(new_state, :timer, timer)}
+      # timer = Process.send_after(self(), :re_transmit_rumour, @timer_interval)
+      # {:noreply, Map.put(new_state, :timer, timer)}
+      {:noreply, new_state}
     end
   end
 
   def handle_cast({:recv_rumour, rumour, topology}, state) do
     if state.terminated == true do
-      if Map.has_key?(state, :timer) do
-        :timer.cancel(state.timer)
-      end
+      # if Map.has_key?(state, :timer) do
+      #   :timer.cancel(state.timer)
+      # end
+
+      # Ask the sender to remove this node from its topology.
+      sender = rumour.sender
+      send(sender, {:remove_from_topology, self()})
+
+      # Ask the app to start again.
+      send(state.application, {:restart_gossip})
 
       {:noreply, state}
     else
       new_state = Map.put(state, :topology, topology)
       {terminate, map} = new_state.rumourHandler |> Gossip.RumourHandler.handle_rumour(rumour)
 
-      IO.puts("Node #{state.label} received a brodcast from #{rumour.label}.")
+      # IO.puts("Node #{state.label} received a brodcast from #{rumour.label}.")
 
       updated_state =
         if terminate == true do
-          if Map.has_key?(new_state, :timer) do
-            :timer.cancel(new_state.timer)
-          end
+          # if Map.has_key?(new_state, :timer) do
+          #   :timer.cancel(new_state.timer)
+          # end
 
-          send(state.application, {:node_terminated})
+          send(state.application, {:node_terminated, self()})
 
-          # IO.puts(
-          #   "Node #{state.label} Count = #{map.count}, Ratio = #{map.ratio}, Rounds = #{
-          #     map.rounds
-          #   }"
-          # )
+          IO.puts(
+            "Node #{state.label} Count = #{map.count}, Ratio = #{map.ratio}, Rounds = #{
+              map.rounds
+            }"
+          )
 
           Map.put(new_state, :terminated, true)
         else

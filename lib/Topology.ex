@@ -21,4 +21,14 @@ defmodule Gossip.Topology do
 
     neighbour
   end
+
+  def debug_node_count(topology) do
+    list = Map.get(topology, :nodes)
+    length(list)
+  end
+
+  def remove_node(topology, node) do
+    list = Map.get(topology, :nodes)
+    %{nodes: List.delete(list, node)}
+  end
 end
