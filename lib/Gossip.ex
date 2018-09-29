@@ -27,60 +27,65 @@ defmodule Gossip.Node do
     GenServer.cast(pid, {:transmit_rumour, topology})
   end
 
+  # Called internally
+  defp re_transmit_rumour(pid, topology, rumour) do
+    GenServer.cast(pid, {:re_transmit_rumour, topology, rumour})
+  end
+
   def recv_rumour(pid, rumour, topology) do
     GenServer.cast(pid, {:recv_rumour, rumour, topology})
   end
 
-  def handle_info(:re_transmit_rumour, state) do
-    Gossip.Node.transmit_rumour(self(), state.topology)
-    {:noreply, state}
-  end
-
-  def handle_info({:remove_from_topology, sender}, state) do
+  # Gets called when someone we sent the rumour to is no longer active.
+  # We should remove that node from our topology and retranmit the
+  # rumour to someone else.
+  def handle_info({:remove_from_topology, sender, rumour}, state) do
     updated_state = Map.put(state, :topology, Gossip.Topology.remove_node(state.topology, sender))
+    re_transmit_rumour(self(), state.topology, rumour)
 
     # IO.puts "Number of nodes = #{Gossip.Topology.debug_node_count(state.topology)}, after removal = #{Gossip.Topology.debug_node_count(updated_state.topology)}"
     {:noreply, updated_state}
   end
 
+  def handle_cast({:re_transmit_rumour, _topology, rumour}, state) do
+    if state.terminated == true do
+      {:noreply, state}
+    else
+      do_broadcast(rumour, state)
+      {:noreply, state}
+    end
+  end
+
+  def handle_info({:continue_gossip}, state) do
+    Gossip.Node.transmit_rumour(self(), state.topology)
+    {:noreply, state}
+  end
+
+  # Will be called once from the App.
+  # Rest of the calls will be from other nodes.
+  # Once the flow comes to this point - assume that we have a neighour to broadcast.
   def handle_cast({:transmit_rumour, topology}, state) do
     if state.terminated == true do
-      # if Map.has_key?(state, :timer) do
-      #   :timer.cancel(state.timer)
-      # end
-
-      # Ask the app to start again.
-      send(state.application, {:restart_gossip})
+      # This should never happen.
+      # This nodes termination gets handled in recv_rumour. So whoeever sent
+      # the rumour to this node already knows that this node is terminated.
 
       {:noreply, state}
     else
       # Update the state to include the topology received
       new_state = Map.put(state, :topology, topology)
       new_state.rumourHandler |> Gossip.RumourHandler.hot_rumour() |> do_broadcast(new_state)
-
-      # if Map.has_key?(new_state, :timer) do
-      #   :timer.cancel(new_state.timer)
-      # end
-
-      # timer = Process.send_after(self(), :re_transmit_rumour, @timer_interval)
-      # {:noreply, Map.put(new_state, :timer, timer)}
       {:noreply, new_state}
     end
   end
 
+  # Gets called when this node receives a rumour from someone else
   def handle_cast({:recv_rumour, rumour, topology}, state) do
     if state.terminated == true do
-      # if Map.has_key?(state, :timer) do
-      #   :timer.cancel(state.timer)
-      # end
-
       # Ask the sender to remove this node from its topology.
+      # And forward the same rumour to someone else.
       sender = rumour.sender
-      send(sender, {:remove_from_topology, self()})
-
-      # Ask the app to start again.
-      send(state.application, {:restart_gossip})
-
+      send(sender, {:remove_from_topology, self(), rumour})
       {:noreply, state}
     else
       new_state = Map.put(state, :topology, topology)
@@ -90,11 +95,11 @@ defmodule Gossip.Node do
 
       updated_state =
         if terminate == true do
-          # if Map.has_key?(new_state, :timer) do
-          #   :timer.cancel(new_state.timer)
-          # end
-
           send(state.application, {:node_terminated, self()})
+
+          # Ask the sender to continue gossip
+          sender = rumour.sender
+          send(sender, {:continue_gossip})
 
           IO.puts(
             "Node #{state.label} Count = #{map.count}, Ratio = #{map.ratio}, Rounds = #{
@@ -114,6 +119,9 @@ defmodule Gossip.Node do
 
   def do_broadcast(rumour, state) do
     # Get neighbour from topology. send rumour
+    # TODO: What if this node fails to find a active neighbour?
+    # We could have a case where this node fails to find a valid/alive
+    # neighbour. In that case, this node should do something.
     neighbour = Gossip.Topology.neighbour_for_node(state.topology, self())
     # IO.puts("Broadcasting rumour from node #{state.label}")
     Gossip.Node.recv_rumour(neighbour, rumour, state.topology)

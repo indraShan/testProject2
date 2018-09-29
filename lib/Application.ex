@@ -31,11 +31,13 @@ defmodule Gossip.Application do
       nodes: nodes
     }
 
-    send(self(), {:restart_gossip})
+    send(self(), {:start_gossip})
 
     {:ok, state}
   end
 
+  # Called by node as they terminate.
+  # Decide when to terminated the whole thing and go home.
   def handle_info({:node_terminated, node}, state) do
     nodes = List.delete(state.nodes, node)
 
@@ -43,16 +45,15 @@ defmodule Gossip.Application do
       send(state.caller, {:terminate})
     end
 
-    send(self(), {:restart_gossip})
     {:noreply, Map.put(state, :nodes, nodes)}
   end
 
-  def handle_info({:restart_gossip}, state) do
+  # Called from init. Just once to start the gossip.
+  def handle_info({:start_gossip}, state) do
     # Get a random node
     node = Enum.at(state.nodes, Enum.random(0..(length(state.nodes) - 1)))
     # Start tranmitting from the chosen node
     Gossip.Node.transmit_rumour(node, state.topology)
-
     {:noreply, state}
   end
 
