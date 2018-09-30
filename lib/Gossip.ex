@@ -52,6 +52,7 @@ defmodule Gossip.Node do
         Gossip.Topology.remove_node(state.topology_type, state.topology, sender)
       )
 
+    # IO.inspect(state.topology)
     re_transmit_rumour(self(), state.topology, rumour)
 
     # IO.puts "Number of nodes = #{Gossip.Topology.debug_node_count(state.topology)}, after removal = #{Gossip.Topology.debug_node_count(updated_state.topology)}"
