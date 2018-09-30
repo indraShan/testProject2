@@ -34,6 +34,30 @@ defmodule Gossip.Grid3DTopology do
     neighbour
   end
 
+  def remove_node(topology, node) do
+    mp = Map.get(topology, node)
+    nodes = MapSet.to_list(mp)
+    IO.inspect(nodes)
+
+    topology = del_elem(nodes, topology, node)
+
+    topology = Map.delete(topology, node)
+    topology
+  end
+
+  defp del_elem([], topology, _x) do
+    topology
+  end
+
+  defp del_elem([node | nodes], topology, x) do
+    nbrs = Map.get(topology, node)
+    nbrs = MapSet.delete(nbrs, x)
+    topology = Map.put(topology, node, nbrs)
+
+    topology = del_elem(nodes, topology, x)
+    topology
+  end
+
   defp make_grid(_grid, new_grid, index, size) when index >= size do
     new_grid
   end
@@ -141,7 +165,7 @@ defmodule Gossip.Grid3DTopology do
       end
 
     strctr = Map.put(strctr, node, mp)
-    IO.inspect mp
+    IO.inspect(mp)
     # IO.inspect strctr
 
     strctr = iterate_col(grid, strctr, row, col + 1, z, size)

@@ -1,14 +1,19 @@
-defmodule Gossip.TorusTopology do
+defmodule Gossip.Rand2DTopology do
   def create_structure(nodes, numNodes) do
     # should get numNodes, list of nodes and topology
     # For now just the torus network.
     # But from here we can return whatever we want.
-    mp = MapSet.new([])
-    
 
+    node_mapping = %{}
+
+    node_mapping = Map.put(node_mapping, :points, MapSet.new([]))
+    node_mapping = plot_nodes(nodes, node_mapping)
+    # IO.inspect node_mapping
     # mtrx = Enum.chunk_every(nodes, size, size)
+
     strctr = %{}
     # strctr = iterate_row(mtrx, strctr, 0, 0, size - 1)
+    strctr = populate_nbrs(nodes, nodes, node_mapping, strctr)
     strctr
   end
 
@@ -29,81 +34,82 @@ defmodule Gossip.TorusTopology do
     neighbour
   end
 
-  defp iterate_col(_mtrx, strctr, _row, col, size) when col > size do
+  def remove_node(topology, node) do
+    mp = Map.get(topology, node)
+    nodes = MapSet.to_list(mp)
+    IO.inspect(nodes)
+
+    topology = del_elem(nodes, topology, node)
+
+    topology = Map.delete(topology, node)
+    topology
+  end
+
+  defp del_elem([], topology, x) do
+    topology
+  end
+
+  defp del_elem([node | nodes], topology, x) do
+    nbrs = Map.get(topology, node)
+    nbrs = MapSet.delete(nbrs, x)
+    topology = Map.put(topology, node, nbrs)
+
+    topology = del_elem(nodes, topology, x)
+    topology
+  end
+
+  defp plot_nodes([], node_mapping) do
+    node_mapping
+  end
+
+  defp plot_nodes([node | nodes], node_mapping) do
+    x = Float.ceil(:rand.uniform(), 3)
+    y = Float.ceil(:rand.uniform(), 3)
+
+    mpset = Map.get(node_mapping, :points)
+    # IO.puts "Printing on top"
+    # IO.inspect mpset
+
+    node_mapping =
+      if MapSet.member?(mpset, {x, y}) == false do
+        # IO.puts "came here"
+        points_set = Map.get(node_mapping, :points)
+        points_set = MapSet.put(points_set, {x, y})
+        Map.put(node_mapping, :points, points_set)
+      else
+        # IO.puts "else block"
+        plot_nodes(node, node_mapping)
+      end
+
+    node_mapping = Map.put(node_mapping, node, {x, y})
+    # IO.inspect node_mapping
+    node_mapping = plot_nodes(nodes, node_mapping)
+    node_mapping
+  end
+
+  defp populate_nbrs([], nodes, node_mapping, strctr) do
     strctr
   end
 
-  defp iterate_col(mtrx, strctr, row, col, size) do
-    # IO.puts "col = #{col}"
-    # IO.puts "size = #{size}"
+  defp populate_nbrs([node | rem], nodes, node_mapping, strctr) do
+    point = Map.get(node_mapping, node)
 
-    mp = MapSet.new([])
-    node = mtrx |> Enum.at(row) |> Enum.at(col)
-    # IO.puts "node = #{node}"
+    nbrs =
+      Enum.filter(nodes, fn x ->
+        coordinates = Map.get(node_mapping, x)
+        x_diff = elem(coordinates, 0) - elem(point, 0)
+        y_diff = elem(coordinates, 1) - elem(point, 1)
+        distance = :math.sqrt(x_diff * x_diff + y_diff * y_diff)
+        # IO.puts " d = #{distance}"
+        if(x != node and distance <= 0.1) do
+          x
+        end
+      end)
 
-    mp =
-      if row - 1 >= 0 do
-        element = mtrx |> Enum.at(row - 1) |> Enum.at(col)
-        # IO.puts "if cond = #{element}"
-        MapSet.put(mp, element)
-      else
-        element = mtrx |> Enum.at(size) |> Enum.at(col)
-        # IO.puts "else cond = #{element}"
-        MapSet.put(mp, element)
-      end
-
-    mp =
-      if row + 1 <= size do
-        element = mtrx |> Enum.at(row + 1) |> Enum.at(col)
-        # IO.puts "if cond = #{element}"
-        MapSet.put(mp, element)
-      else
-        element = mtrx |> Enum.at(0) |> Enum.at(col)
-        # IO.puts "else cond = #{element}"
-        MapSet.put(mp, element)
-      end
-
-    mp =
-      if col - 1 >= 0 do
-        element = mtrx |> Enum.at(row) |> Enum.at(col - 1)
-        # IO.puts "if cond = #{element}"
-        MapSet.put(mp, element)
-      else
-        element = mtrx |> Enum.at(row) |> Enum.at(size)
-        # IO.puts "else cond = #{element}"
-        MapSet.put(mp, element)
-      end
-
-    mp =
-      if col + 1 <= size do
-        element = mtrx |> Enum.at(row) |> Enum.at(col + 1)
-        # IO.puts "if cond = #{element}"
-        MapSet.put(mp, element)
-      else
-        element = mtrx |> Enum.at(row) |> Enum.at(0)
-        # IO.puts "else cond = #{element}"
-        MapSet.put(mp, element)
-      end
-
+    # IO.inspect nbrs
+    mp = MapSet.new(nbrs)
     strctr = Map.put(strctr, node, mp)
-    # IO.inspect strctr
-
-    # IO.inspect mp
-
-    strctr = iterate_col(mtrx, strctr, row, col + 1, size)
-    strctr
-  end
-
-  defp iterate_row(_mtrx, strctr, row, _col, size) when row > size do
-    # IO.puts("ending...")
-    strctr
-  end
-
-  defp iterate_row(mtrx, strctr, row, col, size) do
-    # IO.puts "row = #{row}"
-    strctr = iterate_col(mtrx, strctr, row, col, size)
-
-    strctr = iterate_row(mtrx, strctr, row + 1, col, size)
+    strctr = populate_nbrs(rem, nodes, node_mapping, strctr)
     strctr
   end
 end

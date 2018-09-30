@@ -1,8 +1,10 @@
 defmodule Gossip.TorusTopology do
-  def create_structure(nodes, numNodes) do
+  def create_structure(nodes) do
     # should get numNodes, list of nodes and topology
     # For now just the torus network.
     # But from here we can return whatever we want.
+
+    numNodes = length(nodes)
     size = round(:math.sqrt(numNodes))
     mtrx = Enum.chunk_every(nodes, size, size)
     strctr = %{}
@@ -25,6 +27,30 @@ defmodule Gossip.TorusTopology do
       end
 
     neighbour
+  end
+
+  def remove_node(topology, node) do
+    mp = Map.get(topology, node)
+    nodes = MapSet.to_list(mp)
+    IO.inspect(nodes)
+
+    topology = del_elem(nodes, topology, node)
+
+    topology = Map.delete(topology, node)
+    topology
+  end
+
+  defp del_elem([], topology, _x) do
+    topology
+  end
+
+  defp del_elem([node | nodes], topology, x) do
+    nbrs = Map.get(topology, node)
+    nbrs = MapSet.delete(nbrs, x)
+    topology = Map.put(topology, node, nbrs)
+
+    topology = del_elem(nodes, topology, x)
+    topology
   end
 
   defp iterate_col(_mtrx, strctr, _row, col, size) when col > size do
