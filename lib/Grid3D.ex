@@ -4,9 +4,8 @@ defmodule Gossip.Grid3DTopology do
     # For now just the torus network.
     # But from here we can return whatever we want.
 
-    root = cuberoot(length(nodes))
-    num = Float.ceil(root, 3)
-    size = round(num)
+    root = :math.pow(length(nodes), 1/3)
+    size = round(root)
     # IO.puts "grid = #{size} * #{size} * #{size}"
     grid = Enum.chunk_every(nodes, size * size)
     grid = make_grid(grid, [], 0, size)
@@ -171,14 +170,4 @@ defmodule Gossip.Grid3DTopology do
     strctr = iterate_col(grid, strctr, row, col + 1, z, size)
     strctr
   end
-
-  # Source for nth_root: https://rosettacode.org/wiki/Nth_root#Elixir
-
-  defp cuberoot(x, precision \\ 1.0e-2) do
-    f = fn prev -> (2 * prev + x / :math.pow(prev, 2)) / 3 end
-    fixed_point(f, x, precision, f.(x))
-  end
-
-  defp fixed_point(_, guess, tolerance, next) when abs(guess - next) < tolerance, do: next
-  defp fixed_point(f, _, tolerance, next), do: fixed_point(f, next, tolerance, f.(next))
 end
