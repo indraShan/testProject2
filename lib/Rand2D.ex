@@ -22,7 +22,12 @@ defmodule Gossip.Rand2DTopology do
   def neighbour_for_node(topology, node) do
     mpset = Map.get(topology, node)
 
-    neighbour = Enum.random(mpset)
+    neighbour =
+      if MapSet.size(mpset) > 0 do
+        Enum.random(mpset)
+      else
+        nil
+      end
 
     neighbour =
       if neighbour == node do
@@ -45,7 +50,7 @@ defmodule Gossip.Rand2DTopology do
     topology
   end
 
-  defp del_elem([], topology, x) do
+  defp del_elem([], topology, _x) do
     topology
   end
 
@@ -87,7 +92,7 @@ defmodule Gossip.Rand2DTopology do
     node_mapping
   end
 
-  defp populate_nbrs([], nodes, node_mapping, strctr) do
+  defp populate_nbrs([], _nodes, _node_mapping, strctr) do
     strctr
   end
 

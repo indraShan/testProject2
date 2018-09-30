@@ -6,9 +6,12 @@ defmodule Gossip.TorusTopology do
 
     numNodes = length(nodes)
     size = round(:math.sqrt(numNodes))
+    # IO.puts "size = #{size}"
     mtrx = Enum.chunk_every(nodes, size, size)
     strctr = %{}
     strctr = iterate_row(mtrx, strctr, 0, 0, size - 1)
+    # IO.inspect strctr
+    # IO.puts "Done creating topology"
     strctr
   end
 
@@ -17,7 +20,12 @@ defmodule Gossip.TorusTopology do
   def neighbour_for_node(topology, node) do
     mpset = Map.get(topology, node)
 
-    neighbour = Enum.random(mpset)
+    neighbour =
+      if MapSet.size(mpset) > 0 do
+        Enum.random(mpset)
+      else
+        nil
+      end
 
     neighbour =
       if neighbour == node do
