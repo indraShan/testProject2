@@ -1,10 +1,10 @@
 defmodule Gossip.Grid3DTopology do
-  def create_structure(nodes, numNodes) do
+  def create_structure(nodes) do
     # should get numNodes, list of nodes and topology
     # For now just the torus network.
     # But from here we can return whatever we want.
 
-    root = cuberoot(numNodes)
+    root = cuberoot(length(nodes))
     num = Float.ceil(root, 3)
     size = round(num)
     # IO.puts "grid = #{size} * #{size} * #{size}"

@@ -1,5 +1,5 @@
 defmodule Gossip.Rand2DTopology do
-  def create_structure(nodes, numNodes) do
+  def create_structure(nodes) do
     # should get numNodes, list of nodes and topology
     # For now just the torus network.
     # But from here we can return whatever we want.

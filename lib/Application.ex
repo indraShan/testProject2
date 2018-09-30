@@ -13,7 +13,7 @@ defmodule Gossip.Application do
     # create nodes
     number_of_nodes = String.to_integer(Enum.at(opts[:args], 0))
     # Topology ignored for now.
-    _ = Enum.at(opts[:args], 1)
+    topology_type = Enum.at(opts[:args], 1)
     # Algo defaults to gossip, unless it is push_sum
     algo =
       if Enum.at(opts[:args], 2) != @push_sum_algo do
@@ -22,8 +22,9 @@ defmodule Gossip.Application do
         @push_sum_algo
       end
 
-    nodes = create_nodes(number_of_nodes, algo)
-    topology = Gossip.Topology.create_structure(nodes)
+    # modify number_of_nodes to account for the toplpgy
+    nodes = create_nodes(number_of_nodes, algo, topology_type)
+    topology = Gossip.Topology.create_topology(topology_type, nodes)
 
     state = %{
       topology: topology,
@@ -57,11 +58,11 @@ defmodule Gossip.Application do
     {:noreply, state}
   end
 
-  defp create_nodes(n, algo) do
+  defp create_nodes(n, algo, topology_type) do
     # Create nodes.
     nodes =
       Enum.reduce(1..n, [], fn x, list ->
-        {:ok, pid} = Gossip.Node.start_link(x, self(), algo)
+        {:ok, pid} = Gossip.Node.start_link(x, self(), algo, topology_type)
         [pid | list]
       end)
 

@@ -6,8 +6,12 @@
 defmodule Gossip.Node do
   # @timer_interval 10
 
-  def start_link(label, application, algo) do
-    GenServer.start(__MODULE__, [label: label, application: application, algo: algo], [])
+  def start_link(label, application, algo, topology_type) do
+    GenServer.start(
+      __MODULE__,
+      [label: label, application: application, algo: algo, topology_type: topology_type],
+      []
+    )
   end
 
   def init(opts) do
@@ -17,7 +21,8 @@ defmodule Gossip.Node do
       label: opts[:label],
       rumourHandler: handler,
       terminated: false,
-      application: opts[:application]
+      application: opts[:application],
+      topology_type: opts[:topology_type]
     }
 
     {:ok, state}
@@ -40,7 +45,13 @@ defmodule Gossip.Node do
   # We should remove that node from our topology and retranmit the
   # rumour to someone else.
   def handle_info({:remove_from_topology, sender, rumour}, state) do
-    updated_state = Map.put(state, :topology, Gossip.Topology.remove_node(state.topology, sender))
+    updated_state =
+      Map.put(
+        state,
+        :topology,
+        Gossip.Topology.remove_node(state.topology_type, state.topology, sender)
+      )
+
     re_transmit_rumour(self(), state.topology, rumour)
 
     # IO.puts "Number of nodes = #{Gossip.Topology.debug_node_count(state.topology)}, after removal = #{Gossip.Topology.debug_node_count(updated_state.topology)}"
@@ -122,7 +133,7 @@ defmodule Gossip.Node do
     # TODO: What if this node fails to find a active neighbour?
     # We could have a case where this node fails to find a valid/alive
     # neighbour. In that case, this node should do something.
-    neighbour = Gossip.Topology.neighbour_for_node(state.topology, self())
+    neighbour = Gossip.Topology.neighbour_for_node(state.topology_type, state.topology, self())
     # IO.puts("Broadcasting rumour from node #{state.label}")
     Gossip.Node.recv_rumour(neighbour, rumour, state.topology)
   end
