@@ -23,6 +23,17 @@ defmodule Gossip.Application do
       end
 
     # modify number_of_nodes to account for the toplpgy
+    case topology_type do
+      "torus" ->
+        nums = round(:math.ceil(:math.sqrt(number_of_nodes)))
+        number_of_nodes = nums * nums
+      
+      "grid3d" ->
+        root = :math.pow(number_of_nodes, 1/3)
+        num = round(:math.ceil(root))
+        number_of_nodes = num*num*num 
+    end
+
     nodes = create_nodes(number_of_nodes, algo, topology_type)
     topology = Gossip.Topology.create_topology(topology_type, nodes)
 
