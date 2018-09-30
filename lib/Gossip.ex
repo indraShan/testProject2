@@ -112,11 +112,11 @@ defmodule Gossip.Node do
           sender = rumour.sender
           send(sender, {:continue_gossip})
 
-          IO.puts(
-            "Node #{state.label} Count = #{map.count}, Ratio = #{map.ratio}, Rounds = #{
-              map.rounds
-            }"
-          )
+          # IO.puts(
+          #   "Node #{state.label} Count = #{map.count}, Ratio = #{map.ratio}, Rounds = #{
+          #     map.rounds
+          #   }"
+          # )
 
           Map.put(new_state, :terminated, true)
         else

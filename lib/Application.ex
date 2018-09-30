@@ -43,6 +43,7 @@ defmodule Gossip.Application do
     nodes = List.delete(state.nodes, node)
 
     if length(nodes) == 1 do
+      printResult(true, state)
       send(state.caller, {:terminate})
     end
 
@@ -53,9 +54,10 @@ defmodule Gossip.Application do
   def handle_info({:start_gossip}, state) do
     # Get a random node
     node = Enum.at(state.nodes, Enum.random(0..(length(state.nodes) - 1)))
+    start_time = :os.system_time(:millisecond)
     # Start tranmitting from the chosen node
     Gossip.Node.transmit_rumour(node, state.topology)
-    {:noreply, state}
+    {:noreply, Map.put(state, :start_time, start_time)}
   end
 
   defp create_nodes(n, algo, topology_type) do
@@ -67,5 +69,17 @@ defmodule Gossip.Application do
       end)
 
     nodes
+  end
+
+  defp printResult(converged, state) do
+    start_time = state.start_time
+    end_time = :os.system_time(:millisecond)
+    gossip_time = end_time - start_time
+
+    if converged == true do
+      IO.puts("Network converged in #{gossip_time} milliseconds")
+    else
+      IO.puts("Network did not converge. Time spent: #{gossip_time} milliseconds")
+    end
   end
 end
