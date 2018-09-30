@@ -4,7 +4,7 @@ defmodule Gossip.Grid3DTopology do
     # For now just the torus network.
     # But from here we can return whatever we want.
 
-    root = :math.pow(length(nodes), 1/3)
+    root = :math.pow(length(nodes), 1 / 3)
     size = round(root)
     # IO.puts "grid = #{size} * #{size} * #{size}"
     grid = Enum.chunk_every(nodes, size * size)
@@ -21,7 +21,12 @@ defmodule Gossip.Grid3DTopology do
   def neighbour_for_node(topology, node) do
     mpset = Map.get(topology, node)
 
-    neighbour = Enum.random(mpset)
+    neighbour =
+      if MapSet.size(mpset) > 0 do
+        Enum.random(mpset)
+      else
+        nil
+      end
 
     neighbour =
       if neighbour == node do
@@ -36,7 +41,7 @@ defmodule Gossip.Grid3DTopology do
   def remove_node(topology, node) do
     mp = Map.get(topology, node)
     nodes = MapSet.to_list(mp)
-    IO.inspect(nodes)
+    # IO.inspect(nodes)
 
     topology = del_elem(nodes, topology, node)
 
@@ -69,7 +74,7 @@ defmodule Gossip.Grid3DTopology do
   end
 
   defp iterate_grid(_grid, strctr, _row, _col, z, size) when z > size do
-    IO.puts("ending...")
+    # IO.puts("ending...")
     strctr
   end
 
@@ -164,7 +169,7 @@ defmodule Gossip.Grid3DTopology do
       end
 
     strctr = Map.put(strctr, node, mp)
-    IO.inspect(mp)
+    # IO.inspect(mp)
     # IO.inspect strctr
 
     strctr = iterate_col(grid, strctr, row, col + 1, z, size)
