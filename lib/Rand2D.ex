@@ -9,11 +9,10 @@ defmodule Gossip.Rand2DTopology do
     node_mapping = Map.put(node_mapping, :points, MapSet.new([]))
     node_mapping = plot_nodes(nodes, node_mapping)
     # IO.inspect node_mapping
-    # mtrx = Enum.chunk_every(nodes, size, size)
 
     strctr = %{}
-    # strctr = iterate_row(mtrx, strctr, 0, 0, size - 1)
     strctr = populate_nbrs(nodes, nodes, node_mapping, strctr)
+    # IO.inspect strctr
     strctr
   end
 
@@ -42,7 +41,7 @@ defmodule Gossip.Rand2DTopology do
   def remove_node(topology, node) do
     mp = Map.get(topology, node)
     nodes = MapSet.to_list(mp)
-    IO.inspect(nodes)
+    # IO.inspect(nodes)
 
     topology = del_elem(nodes, topology, node)
 

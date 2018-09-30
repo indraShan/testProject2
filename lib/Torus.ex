@@ -40,7 +40,7 @@ defmodule Gossip.TorusTopology do
   def remove_node(topology, node) do
     mp = Map.get(topology, node)
     nodes = MapSet.to_list(mp)
-    IO.inspect(nodes)
+    # IO.inspect(nodes)
 
     topology = del_elem(nodes, topology, node)
 
