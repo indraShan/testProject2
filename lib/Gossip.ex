@@ -4,7 +4,7 @@
 # thread/actor i.e. read may get blocked on write and vice versa.
 # revisit if required.
 defmodule Gossip.Node do
-  # @timer_interval 10
+  @timer_interval 100
 
   def start_link(label, application, algo, topology_type) do
     GenServer.start(
@@ -72,6 +72,12 @@ defmodule Gossip.Node do
     {:noreply, state}
   end
 
+  def handle_info({:transmit_again}, state) do
+    # IO.puts("Again called.")
+    Gossip.Node.transmit_rumour(self(), state.topology)
+    {:noreply, state}
+  end
+
   # Will be called once from the App.
   # Rest of the calls will be from other nodes.
   # Once the flow comes to this point - assume that we have a neighour to broadcast.
@@ -85,13 +91,26 @@ defmodule Gossip.Node do
     else
       # Update the state to include the topology received
       new_state = Map.put(state, :topology, topology)
-      new_state.rumourHandler |> Gossip.RumourHandler.hot_rumour() |> do_broadcast(new_state)
+
+      new_state =
+        new_state.rumourHandler |> Gossip.RumourHandler.hot_rumour() |> do_broadcast(new_state)
+
       {:noreply, new_state}
+    end
+  end
+
+  defp cancelTimer(state) do
+    if Map.has_key?(state, :timer) do
+      Process.cancel_timer(state.timer)
     end
   end
 
   # Gets called when this node receives a rumour from someone else
   def handle_cast({:recv_rumour, rumour, topology}, state) do
+    # Cancel any existing timers, as we would be transmitting again as a result
+    # of this receive.
+    cancelTimer(state)
+
     if state.terminated == true do
       # Ask the sender to remove this node from its topology.
       # And forward the same rumour to someone else.
@@ -134,7 +153,15 @@ defmodule Gossip.Node do
     # We could have a case where this node fails to find a valid/alive
     # neighbour. In that case, this node should do something.
     neighbour = Gossip.Topology.neighbour_for_node(state.topology_type, state.topology, self())
-    # IO.puts("Broadcasting rumour from node #{state.label}")
-    Gossip.Node.recv_rumour(neighbour, rumour, state.topology)
+
+    if neighbour != nil do
+      # IO.puts("Broadcasting rumour from node #{state.label}")
+      Gossip.Node.recv_rumour(neighbour, rumour, state.topology)
+      cancelTimer(state)
+      timer = Process.send_after(self(), {:transmit_again}, @timer_interval)
+      Map.put(state, :timer, timer)
+    else
+      state
+    end
   end
 end
