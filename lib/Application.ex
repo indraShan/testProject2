@@ -50,6 +50,13 @@ defmodule Gossip.Application do
     {:noreply, Map.put(state, :nodes, nodes)}
   end
 
+  def handle_info({:node_cannot_find_neighbour, _node}, state) do
+    printResult(false, state)
+    send(state.caller, {:terminate})
+
+    {:noreply, state}
+  end
+
   # Called from init. Just once to start the gossip.
   def handle_info({:start_gossip}, state) do
     # Get a random node

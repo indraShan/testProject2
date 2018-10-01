@@ -161,6 +161,7 @@ defmodule Gossip.Node do
       timer = Process.send_after(self(), {:transmit_again}, @timer_interval)
       Map.put(state, :timer, timer)
     else
+      send(state.application, {:node_cannot_find_neighbour, self()})
       state
     end
   end
