@@ -6,61 +6,76 @@ defmodule Gossip.Grid3DTopology do
 
     root = :math.pow(length(nodes), 1 / 3)
     size = round(root)
-    # IO.puts "grid = #{size} * #{size} * #{size}"
+    IO.puts("grid = #{size} * #{size} * #{size}")
     grid = Enum.chunk_every(nodes, size * size)
     grid = make_grid(grid, [], 0, size)
     # IO.inspect grid
 
-    strctr = %{}
+    strctr = %{:deleted_set => MapSet.new([])}
     strctr = iterate_grid(grid, strctr, 0, 0, 0, size - 1)
     strctr
+  end
+
+  def debug_node_count(topology) do
+    # list = Map.get(topology, :nodes)
+    # length(list)
+    map_size(topology) - 1
   end
 
   # This method gets called with the exact parameter that was returned from the
   # create_structure method
   def neighbour_for_node(topology, node) do
     mpset = Map.get(topology, node)
+    deleted_set = Map.get(topology, :deleted_set)
 
-    neighbour =
+    {neighbour, topology} =
       if MapSet.size(mpset) > 0 do
-        Enum.random(mpset)
+        {Enum.random(mpset), topology}
       else
-        nil
+        {nil, topology}
       end
 
-    neighbour =
-      if neighbour == node do
+    {neighbour, topology} =
+      if neighbour != nil && MapSet.member?(deleted_set, neighbour) do
+        mpset = MapSet.delete(mpset, neighbour)
+        topology = Map.put(topology, node, mpset)
         neighbour_for_node(topology, node)
       else
-        neighbour
+        {neighbour, topology}
       end
 
-    neighbour
+    {neighbour, topology}
   end
 
   def remove_node(topology, node) do
-    mp = Map.get(topology, node)
-    nodes = MapSet.to_list(mp)
-    # IO.inspect(nodes)
-
-    topology = del_elem(nodes, topology, node)
-
+    ds = Map.get(topology, :deleted_set)
+    ds = MapSet.put(ds, node)
+    topology = Map.put(topology, :deleted_set, ds)
     topology = Map.delete(topology, node)
     topology
+
+    # mp = Map.get(topology, node)
+    # nodes = MapSet.to_list(mp)
+    # # IO.inspect(nodes)
+
+    # topology = del_elem(nodes, topology, node)
+
+    # topology = Map.delete(topology, node)
+    # topology
   end
 
-  defp del_elem([], topology, _x) do
-    topology
-  end
+  # defp del_elem([], topology, _x) do
+  #   topology
+  # end
 
-  defp del_elem([node | nodes], topology, x) do
-    nbrs = Map.get(topology, node)
-    nbrs = MapSet.delete(nbrs, x)
-    topology = Map.put(topology, node, nbrs)
+  # defp del_elem([node | nodes], topology, x) do
+  #   nbrs = Map.get(topology, node)
+  #   nbrs = MapSet.delete(nbrs, x)
+  #   topology = Map.put(topology, node, nbrs)
 
-    topology = del_elem(nodes, topology, x)
-    topology
-  end
+  #   topology = del_elem(nodes, topology, x)
+  #   topology
+  # end
 
   defp make_grid(_grid, new_grid, index, size) when index >= size do
     new_grid

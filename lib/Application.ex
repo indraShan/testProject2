@@ -102,6 +102,10 @@ defmodule Gossip.Application do
       IO.puts("Network converged in #{gossip_time} milliseconds")
     else
       IO.puts("Network did not converge. Time spent: #{gossip_time} milliseconds")
+      # kb
+      # IO.inspect state.nodes
+      # size = length(state.nodes)
+      # IO.puts "left = #{size}"
     end
   end
 end

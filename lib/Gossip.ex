@@ -55,7 +55,8 @@ defmodule Gossip.Node do
     # IO.inspect(state.topology)
     re_transmit_rumour(self(), state.topology, rumour)
 
-    # IO.puts "Number of nodes = #{Gossip.Topology.debug_node_count(state.topology)}, after removal = #{Gossip.Topology.debug_node_count(updated_state.topology)}"
+    # IO.puts("Number of nodes = #{Gossip.Topology.debug_node_count(state.topology_type, state.topology)}, after removal = #{Gossip.Topology.debug_node_count(state.topology_type, updated_state.topology)}")
+
     {:noreply, updated_state}
   end
 
@@ -138,8 +139,16 @@ defmodule Gossip.Node do
           #   }"
           # )
 
+          # kb
+          # IO.puts "Node #{state.label}...................Reached Level 10"
           Map.put(new_state, :terminated, true)
         else
+          # kb
+          # IO.puts(
+          #   "Node #{state.label} Count = #{map.count}, Ratio = #{map.ratio}, Rounds = #{
+          #     map.rounds
+          #   }"
+          # )
           Gossip.Node.transmit_rumour(self(), new_state.topology)
           new_state
         end
@@ -153,15 +162,29 @@ defmodule Gossip.Node do
     # TODO: What if this node fails to find a active neighbour?
     # We could have a case where this node fails to find a valid/alive
     # neighbour. In that case, this node should do something.
-    neighbour = Gossip.Topology.neighbour_for_node(state.topology_type, state.topology, self())
+    {neighbour, topology} =
+      Gossip.Topology.neighbour_for_node(state.topology_type, state.topology, self())
+
+    state = Map.put(state, :topology, topology)
 
     if neighbour != nil do
       # IO.puts("Broadcasting rumour from node #{state.label}")
+      # size = map_size(state.topology)-1
+
+      # kb
+      # IO.puts "Found neighbour for #{state.label}"
+      # IO.inspect state.topology
       Gossip.Node.recv_rumour(neighbour, rumour, state.topology)
       cancelTimer(state)
       timer = Process.send_after(self(), {:transmit_again}, @timer_interval)
       Map.put(state, :timer, timer)
+      # state
     else
+      # size = map_size(state.topology)-1
+
+      # kb
+      # IO.puts "#{state.label} cannot find neighbour = "
+      # IO.inspect state.topology
       send(state.application, {:node_cannot_find_neighbour, self()})
       state
     end
