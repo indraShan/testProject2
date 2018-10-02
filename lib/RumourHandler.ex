@@ -26,31 +26,35 @@ defmodule Gossip.RumourHandler do
         fn map ->
           {
             map,
-            # Update rumour count by 1
-            Map.put(map, :count, map.count + 1)
-            |> Map.put(
-              :rounds,
-              if abs(
-                   # Update rounds: If the difference between old and new ratio is less than limit == +1
-                   # Otherwise reset to zero
-                   (Map.get(rumour, :s) + Map.get(map, :s)) /
-                     (Map.get(rumour, :weight) + Map.get(map, :weight)) - Map.get(map, :ratio)
-                 ) < @push_sum_min_difference do
-                Map.get(map, :rounds) + 1
-              else
-                0
-              end
-            )
-            # Update ratio
-            |> Map.put(
-              :ratio,
-              (Map.get(rumour, :s) + Map.get(map, :s)) /
-                (Map.get(rumour, :weight) + Map.get(map, :weight))
-            )
-            # Update s to add rumours value
-            |> Map.put(:s, Map.get(rumour, :s) + Map.get(map, :s))
-            # Update weight to add rumours weight
-            |> Map.put(:weight, Map.get(map, :weight) + Map.get(rumour, :weight))
+            if map.algo == @push_sum_algo do
+              # Update rumour count by 1
+              Map.put(map, :count, map.count + 1)
+              |> Map.put(
+                :rounds,
+                if abs(
+                     # Update rounds: If the difference between old and new ratio is less than limit == +1
+                     # Otherwise reset to zero
+                     (Map.get(rumour, :s) + Map.get(map, :s)) /
+                       (Map.get(rumour, :weight) + Map.get(map, :weight)) - Map.get(map, :ratio)
+                   ) < @push_sum_min_difference do
+                  Map.get(map, :rounds) + 1
+                else
+                  0
+                end
+              )
+              # Update ratio
+              |> Map.put(
+                :ratio,
+                (Map.get(rumour, :s) + Map.get(map, :s)) /
+                  (Map.get(rumour, :weight) + Map.get(map, :weight))
+              )
+              # Update s to add rumours value
+              |> Map.put(:s, Map.get(rumour, :s) + Map.get(map, :s))
+              # Update weight to add rumours weight
+              |> Map.put(:weight, Map.get(map, :weight) + Map.get(rumour, :weight))
+            else
+              Map.put(map, :count, map.count + 1)
+            end
           }
         end
       )
