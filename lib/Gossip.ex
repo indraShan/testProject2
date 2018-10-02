@@ -4,7 +4,7 @@
 # thread/actor i.e. read may get blocked on write and vice versa.
 # revisit if required.
 defmodule Gossip.Node do
-  @timer_interval 100
+  @timer_interval 500
 
   def start_link(label, application, algo, topology_type) do
     GenServer.start(

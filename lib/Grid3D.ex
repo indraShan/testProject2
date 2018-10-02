@@ -6,7 +6,7 @@ defmodule Gossip.Grid3DTopology do
 
     root = :math.pow(length(nodes), 1 / 3)
     size = round(root)
-    IO.puts("grid = #{size} * #{size} * #{size}")
+    # IO.puts("grid = #{size} * #{size} * #{size}")
     grid = Enum.chunk_every(nodes, size * size)
     grid = make_grid(grid, [], 0, size)
     # IO.inspect grid

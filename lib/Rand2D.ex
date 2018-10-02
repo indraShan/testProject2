@@ -12,7 +12,7 @@ defmodule Gossip.Rand2DTopology do
 
     strctr = %{:deleted_set => MapSet.new([])}
     strctr = populate_nbrs(nodes, nodes, node_mapping, strctr)
-    IO.puts("Done mapping")
+    # IO.puts("Done mapping")
     strctr
   end
 
