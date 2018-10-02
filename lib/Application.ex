@@ -42,6 +42,8 @@ defmodule Gossip.Application do
     topology = Gossip.Topology.create_topology(topology_type, nodes)
 
     state = %{
+      no_neighbour_start_nodes: MapSet.new([]),
+      topology_type: topology_type,
       topology: topology,
       caller: opts[:caller],
       nodes: nodes
@@ -76,10 +78,28 @@ defmodule Gossip.Application do
   def handle_info({:start_gossip}, state) do
     # Get a random node
     node = Enum.at(state.nodes, Enum.random(0..(length(state.nodes) - 1)))
-    start_time = :os.system_time(:millisecond)
-    # Start tranmitting from the chosen node
-    Gossip.Node.transmit_rumour(node, state.topology)
-    {:noreply, Map.put(state, :start_time, start_time)}
+    # If the node doesnt have a nighbour, dont start with this node.
+    {neighbour, _} = Gossip.Topology.neighbour_for_node(state.topology_type, state.topology, node)
+
+    if neighbour == nil do
+      # If we have tried all the nodes by now, just stop.
+      if MapSet.size(state.no_neighbour_start_nodes) == length(state.nodes) do
+        printResult(false, state)
+        {:noreply, state}
+      else
+        # Add the current node no_neighbour_start_nodes and continue.
+        no_neighbour_start_nodes = state.no_neighbour_start_nodes |> MapSet.put(node)
+        updated_state = state |> Map.put(:no_neighbour_start_nodes, no_neighbour_start_nodes)
+        # Try again.
+        send(self(), {:start_gossip})
+        {:noreply, updated_state}
+      end
+    else
+      start_time = :os.system_time(:millisecond)
+      # Start tranmitting from the chosen node
+      Gossip.Node.transmit_rumour(node, state.topology)
+      {:noreply, Map.put(state, :start_time, start_time)}
+    end
   end
 
   defp create_nodes(n, algo, topology_type) do
