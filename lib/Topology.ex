@@ -1,10 +1,10 @@
 defmodule Gossip.Topology do
   @full_network_type "full"
-  @grid3d_network_type "grid3d"
-  @rand2d_network_type "rand2d"
+  @grid3d_network_type "3D"
+  @rand2d_network_type "rand2D"
   @torus_network_type "torus"
   @line_network_type "line"
-  @imp2d_network_type "imp2d"
+  @imp2d_network_type "imp2D"
 
   def create_topology(type, nodes) do
     case type do

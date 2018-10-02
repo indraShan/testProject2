@@ -10,7 +10,7 @@ defmodule Gossip.ImpLineTopology do
     # IO.inspect line
     strctr = elem(line, 1)
     num = map_size(strctr) - 1
-    IO.puts("Done creating topology with #{num} nodes")
+    # IO.puts("Done creating topology with #{num} nodes")
     strctr
   end
 

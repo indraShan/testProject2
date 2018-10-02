@@ -12,7 +12,7 @@ defmodule Gossip.TorusTopology do
 
     strctr = iterate_row(mtrx, strctr, 0, 0, size - 1)
     # IO.inspect strctr
-    IO.puts("Done creating topology")
+    # IO.puts("Done creating topology")
     strctr
   end
 

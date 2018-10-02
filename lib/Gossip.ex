@@ -21,6 +21,7 @@ defmodule Gossip.Node do
       label: opts[:label],
       rumourHandler: handler,
       terminated: false,
+      infected: false,
       application: opts[:application],
       topology_type: opts[:topology_type]
     }
@@ -121,6 +122,15 @@ defmodule Gossip.Node do
       {:noreply, state}
     else
       new_state = Map.put(state, :topology, topology)
+
+      new_state =
+        if new_state.infected == false do
+          send(new_state.application, {:node_infected, self()})
+          new_state |> Map.put(:infected, true)
+        else
+          new_state
+        end
+
       {terminate, map} = new_state.rumourHandler |> Gossip.RumourHandler.handle_rumour(rumour)
 
       # IO.puts("Node #{state.label} received a brodcast from #{rumour.label}.")
@@ -158,35 +168,35 @@ defmodule Gossip.Node do
   end
 
   def do_broadcast(rumour, state) do
-    # Get neighbour from topology. send rumour
-    # TODO: What if this node fails to find a active neighbour?
-    # We could have a case where this node fails to find a valid/alive
-    # neighbour. In that case, this node should do something.
-    {neighbour, topology} =
-      Gossip.Topology.neighbour_for_node(state.topology_type, state.topology, self())
-
-    state = Map.put(state, :topology, topology)
-
-    if neighbour != nil do
-      # IO.puts("Broadcasting rumour from node #{state.label}")
-      # size = map_size(state.topology)-1
-
-      # kb
-      # IO.puts "Found neighbour for #{state.label}"
-      # IO.inspect state.topology
-      Gossip.Node.recv_rumour(neighbour, rumour, state.topology)
-      cancelTimer(state)
-      timer = Process.send_after(self(), {:transmit_again}, @timer_interval)
-      Map.put(state, :timer, timer)
-      # state
-    else
-      # size = map_size(state.topology)-1
-
-      # kb
-      # IO.puts "#{state.label} cannot find neighbour = "
-      # IO.inspect state.topology
-      send(state.application, {:node_cannot_find_neighbour, self()})
+    if state.terminated == true do
       state
+    else
+      {neighbour, topology} =
+        Gossip.Topology.neighbour_for_node(state.topology_type, state.topology, self())
+
+      state = Map.put(state, :topology, topology)
+
+      if neighbour != nil do
+        # IO.puts("Broadcasting rumour from node #{state.label}")
+        # size = map_size(state.topology)-1
+
+        # kb
+        # IO.puts "Found neighbour for #{state.label}"
+        # IO.inspect state.topology
+        Gossip.Node.recv_rumour(neighbour, rumour, state.topology)
+        cancelTimer(state)
+        timer = Process.send_after(self(), {:transmit_again}, @timer_interval)
+        Map.put(state, :timer, timer)
+        # state
+      else
+        # size = map_size(state.topology)-1
+
+        # kb
+        # IO.puts("#{state.label} cannot find neighbour = ")
+        # IO.inspect state.topology
+        send(state.application, {:node_cannot_find_neighbour, self()})
+        Map.put(state, :terminated, true)
+      end
     end
   end
 end
